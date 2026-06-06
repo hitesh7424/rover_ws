@@ -1,0 +1,168 @@
+<?xml version="1.0"?>
+<!-- Generated using onshape-to-robot, converted to Xacro -->
+<robot name="rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Properties -->
+    <xacro:property name="mesh_path" value="package://rover_description/meshes" />
+
+    <!-- Materials -->
+    <material name="rover_body_material">
+        <color rgba="0.737255 0.937255 0.917647 1" />
+    </material>
+    <material name="lidar_material">
+        <color rgba="0.231373 0.380392 0.705882 1" />
+    </material>
+    <material name="wheel_material">
+        <color rgba="1 0.756863 0.054902 1" />
+    </material>
+    <material name="camera_lens_material">
+        <color rgba="0.647059 0.647059 0.647059 1" />
+    </material>
+
+    <!-- Base Link (Standard ROS convention) -->
+    <link name="base_link" />
+
+    <joint name="base_joint" type="fixed">
+        <parent link="base_link" />
+        <child link="rover_body" />
+        <origin xyz="0 0 0" rpy="0 0 1.57079632679" />
+    </joint>
+
+    <!-- Link rover_body -->
+    <link name="rover_body">
+        <inertial>
+            <origin xyz="-6.58419e-05 0.0064043 0.0665281" rpy="0 0 0" />
+            <mass value="6.02365" />
+            <inertia ixx="0.0540089" ixy="7.02344e-05" ixz="5.06161e-05" iyy="0.0258641"
+                iyz="-0.00181846" izz="0.0696575" />
+        </inertial>
+        <!-- Part rover_body -->
+        <visual>
+            <origin xyz="0 0.0045 0" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="${mesh_path}/rover_body.stl" />
+            </geometry>
+            <material name="rover_body_material" />
+        </visual>
+        <collision>
+            <origin xyz="0 0.0045 0" rpy="0 -0 0" />
+            <geometry>
+                <mesh filename="${mesh_path}/rover_body.stl" />
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Link lidar -->
+    <link name="lidar">
+        <inertial>
+            <origin xyz="-0.000288076 -0.000664365 -0.00894876" rpy="0 0 0" />
+            <mass value="0.0635195" />
+            <inertia ixx="1.59157e-05" ixy="2.80196e-07" ixz="-2.3062e-08" iyy="1.58017e-05"
+                iyz="-5.316e-08" izz="2.81689e-05" />
+        </inertial>
+        <!-- Part lidar -->
+        <visual>
+            <origin xyz="-0.0005 -0.0760794 0.126" rpy="3.14159 -0 0" />
+            <geometry>
+                <mesh filename="${mesh_path}/lidar.stl" />
+            </geometry>
+            <material name="lidar_material" />
+        </visual>
+        <collision>
+            <origin xyz="-0.0005 -0.0760794 0.126" rpy="3.14159 -0 0" />
+            <geometry>
+                <mesh filename="${mesh_path}/lidar.stl" />
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Wheel Macro -->
+    <xacro:macro name="wheel_link" params="name material_name">
+        <link name="${name}">
+            <inertial>
+                <origin xyz="0 0 -0.0040025" rpy="0 0 0" />
+                <mass value="0.0659595" />
+                <inertia ixx="2.10606e-05" ixy="0" ixz="0" iyy="2.10606e-05" iyz="0"
+                    izz="3.68034e-05" />
+            </inertial>
+            <!-- Part wheel -->
+            <visual>
+                <origin xyz="0.0045 0.032 0.099" rpy="1.5708 1.5708 0" />
+                <geometry>
+                    <mesh filename="${mesh_path}/wheel.stl" />
+                </geometry>
+                <material name="${material_name}" />
+            </visual>
+            <collision>
+                <origin xyz="0.0045 0.032 0.099" rpy="1.5708 1.5708 0" />
+                <geometry>
+                    <mesh filename="${mesh_path}/wheel.stl" />
+                </geometry>
+            </collision>
+        </link>
+    </xacro:macro>
+
+    <!-- Instantiate Wheels -->
+    <xacro:wheel_link name="wheel" material_name="wheel_material" />
+    <xacro:wheel_link name="wheel_2" material_name="wheel_material" />
+
+    <!-- Link camera_lens -->
+    <link name="camera_lens">
+        <inertial>
+            <origin xyz="-0 0 -0.0001" rpy="0 0 0" />
+            <mass value="9.11538e-06" />
+            <inertia ixx="1e-09" ixy="0" ixz="0" iyy="1e-09" iyz="0" izz="1e-09" />
+        </inertial>
+        <!-- Part camera_lens -->
+        <visual>
+            <origin xyz="0.00325 0.233035 -0.163474" rpy="1.44547 -0 0" />
+            <geometry>
+                <mesh filename="${mesh_path}/camera_lens.stl" />
+            </geometry>
+            <material name="camera_lens_material" />
+        </visual>
+        <collision>
+            <origin xyz="0.00325 0.233035 -0.163474" rpy="1.44547 -0 0" />
+            <geometry>
+                <mesh filename="${mesh_path}/camera_lens.stl" />
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- JOINTS -->
+    <!-- Joint from rover_body to lidar -->
+    <joint name="lidar" type="fixed">
+        <origin xyz="0.0005 -0.0715794 0.126" rpy="3.14159 -0 0" />
+        <parent link="rover_body" />
+        <child link="lidar" />
+        <axis xyz="0 0 1" />
+        <limit effort="10" velocity="10" />
+    </joint>
+
+    <!-- Joint from rover_body to wheel (left) -->
+    <joint name="left_wheel" type="continuous">
+        <origin xyz="0.099 0 0.032" rpy="-1.5708 -0 1.5708" />
+        <parent link="rover_body" />
+        <child link="wheel" />
+        <axis xyz="0 0 -1" />
+        <limit effort="10" velocity="10" />
+    </joint>
+
+    <!-- Joint from rover_body to wheel_2 (right) -->
+    <joint name="right_wheel" type="continuous">
+        <origin xyz="-0.099 0 0.032" rpy="1.5708 -0 1.5708" />
+        <parent link="rover_body" />
+        <child link="wheel_2" />
+        <axis xyz="0 0 1" />
+        <limit effort="10" velocity="10" />
+    </joint>
+
+    <!-- Joint from rover_body to camera_lens -->
+    <joint name="camera" type="fixed">
+        <origin xyz="-0.00325 0.137563 0.251642" rpy="-1.44547 -0 0" />
+        <parent link="rover_body" />
+        <child link="camera_lens" />
+        <axis xyz="0 0 1" />
+        <limit effort="10" velocity="10" />
+    </joint>
+</robot>

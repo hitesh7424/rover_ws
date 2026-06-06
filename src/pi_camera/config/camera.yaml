@@ -1,0 +1,19 @@
+# pi_camera default configuration
+# Copy to ~/.ros/pi_camera.yaml and edit as needed
+# Then launch with: ros2 launch pi_camera camera.launch.py
+
+camera:
+  ros__parameters:
+    # Resolution profile: high_speed | balanced | full_res | slam | detection
+    #   high_speed  -> 1536x864  ~30fps  (good for most tasks)
+    #   balanced    -> 2304x1296 ~56fps
+    #   full_res    -> 4608x2592 ~14fps  (max quality, heavy)
+    #   slam        -> 1280x720  ~30fps  (lightweight)
+    #   detection   -> 640x480   ~30fps  (fastest, lowest load)
+    profile: "high_speed"
+
+    # Pixel format (RGB888 recommended for ROS2 / OpenCV compatibility)
+    format: "RGB888"
+
+    # Camera port index (0 = CAM0, 1 = CAM1)
+    camera_id: 0

@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>ROVER — micro-ROS Control</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;600;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0a0c0f;
+            --panel: #111418;
+            --border: #1e2530;
+            --accent: #00e5ff;
+            --accent2: #ff6b35;
+            --green: #39ff14;
+            --text: #c8d6e5;
+            --dim: #4a5568;
+            --danger: #ff3860;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, .08) 2px, rgba(0, 0, 0, .08) 4px);
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel);
+        }
+
+        .logo {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 1.6rem;
+            letter-spacing: .15em;
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(0, 229, 255, .5);
+        }
+
+        .logo span {
+            color: var(--accent2);
+        }
+
+        .logo small {
+            font-size: .7rem;
+            color: var(--dim);
+            letter-spacing: .2em;
+            display: block;
+            margin-top: -4px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: .72rem;
+            letter-spacing: .08em;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+            transition: all .3s;
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .5;
+            }
+        }
+
+        #ws-status {
+            color: var(--dim);
+            transition: color .3s;
+        }
+
+        #ws-status.connected {
+            color: var(--green);
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 16px;
+            padding: 16px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+        }
+
+        .panel-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 600;
+            font-size: .7rem;
+            letter-spacing: .2em;
+            color: var(--dim);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: .65rem;
+            color: var(--dim);
+            letter-spacing: .1em;
+            margin-bottom: 6px;
+        }
+
+        .input-group input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: .8rem;
+            padding: 8px 10px;
+            border-radius: 2px;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 600;
+            font-size: .85rem;
+            letter-spacing: .15em;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all .15s;
+            text-transform: uppercase;
+        }
+
+        .btn-connect {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-connect:hover {
+            filter: brightness(1.2);
+        }
+
+        .btn-connect.active {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .data-block {
+            margin-bottom: 14px;
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 2px;
+        }
+
+        .data-label {
+            font-size: .65rem;
+            color: var(--dim);
+            letter-spacing: .1em;
+            margin-bottom: 4px;
+        }
+
+        .data-value {
+            font-size: 1.3rem;
+            color: var(--accent);
+            text-shadow: 0 0 10px rgba(0, 229, 255, .3);
+        }
+
+        .data-value.small {
+            font-size: 1rem;
+        }
+
+        .data-unit {
+            font-size: .7rem;
+            color: var(--dim);
+            margin-left: 4px;
+        }
+
+        .btn-reset {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--dim);
+            font-size: .7rem;
+            padding: 6px;
+            margin-top: 8px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .btn-reset:hover {
+            border-color: var(--accent2);
+            color: var(--accent2);
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .controller-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-areas: ". F ." "L S R" ". B .";
+            grid-template-columns: repeat(3, 80px);
+            grid-template-rows: repeat(3, 80px);
+            gap: 6px;
+        }
+
+        .dpad-btn {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 1.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .1s;
+            user-select: none;
+            -webkit-user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dpad-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--accent);
+            opacity: 0;
+            transition: opacity .1s;
+        }
+
+        .dpad-btn:active::after,
+        .dpad-btn.pressed::after {
+            opacity: .15;
+        }
+
+        .dpad-btn:active,
+        .dpad-btn.pressed {
+            border-color: var(--accent);
+            box-shadow: 0 0 12px rgba(0, 229, 255, .3);
+            transform: scale(.95);
+        }
+
+        .dpad-btn[data-dir="F"] {
+            grid-area: F;
+        }
+
+        .dpad-btn[data-dir="L"] {
+            grid-area: L;
+        }
+
+        .dpad-btn[data-dir="S"] {
+            grid-area: S;
+            border-color: var(--accent2);
+            color: var(--accent2);
+            font-size: .7rem;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            letter-spacing: .1em;
+        }
+
+        .dpad-btn[data-dir="S"]:active::after,
+        .dpad-btn[data-dir="S"].pressed::after {
+            background: var(--accent2);
+            opacity: .2;
+        }
+
+        .dpad-btn[data-dir="R"] {
+            grid-area: R;
+        }
+
+        .dpad-btn[data-dir="B"] {
+            grid-area: B;
+        }
+
+        .speed-wrap {
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .speed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+
+        .speed-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: .7rem;
+            letter-spacing: .2em;
+            color: var(--dim);
+            text-transform: uppercase;
+        }
+
+        .speed-val {
+            font-size: 1.3rem;
+            color: var(--accent);
+        }
+
+        .speed-unit {
+            font-size: .7rem;
+            color: var(--dim);
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(0, 229, 255, .5);
+            cursor: pointer;
+        }
+
+        .presets {
+            display: flex;
+            gap: 6px;
+        }
+
+        .preset-btn {
+            flex: 1;
+            padding: 6px 0;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 600;
+            font-size: .75rem;
+            letter-spacing: .1em;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--dim);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .preset-btn.active {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .log-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            height: 120px;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: .68rem;
+            line-height: 1.8;
+        }
+
+        .log-box::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-box::-webkit-scrollbar-thumb {
+            background: var(--border);
+        }
+
+        .log-entry {
+            color: var(--dim);
+        }
+
+        .log-entry.tx {
+            color: var(--accent);
+        }
+
+        .log-entry.rx {
+            color: var(--green);
+        }
+
+        .log-entry.err {
+            color: var(--danger);
+        }
+
+        .topic-badge {
+            display: inline-block;
+            font-size: .58rem;
+            background: rgba(0, 229, 255, .1);
+            border: 1px solid rgba(0, 229, 255, .3);
+            color: var(--accent);
+            padding: 1px 6px;
+            border-radius: 2px;
+            margin-left: 6px;
+            letter-spacing: .06em;
+        }
+
+        .custom-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .custom-input-row input[type=range] {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .speed-num-input {
+            width: 72px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--accent);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: .9rem;
+            padding: 5px 7px;
+            border-radius: 2px;
+            outline: none;
+            text-align: right;
+            -moz-appearance: textfield;
+        }
+
+        .speed-num-input:focus {
+            border-color: var(--accent);
+        }
+
+        .speed-num-input::-webkit-inner-spin-button,
+        .speed-num-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+        }
+
+        @media(max-width:700px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .dpad-btn {
+                width: 70px;
+                height: 70px;
+            }
+
+            .dpad {
+                grid-template-columns: repeat(3, 70px);
+                grid-template-rows: repeat(3, 70px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">ROV<span>ER</span> CTRL<small>micro-ROS / rosbridge</small></div>
+        <div class="status-bar">
+            <div class="status-dot" id="dot"></div>
+            <span id="ws-status">DISCONNECTED</span>
+            <span id="ws-ip" style="color:var(--dim)">—</span>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- LEFT COLUMN -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <div class="panel">
+                <div class="panel-title">rosbridge Connection</div>
+                <div class="input-group">
+                    <label>Host (PC running rosbridge)</label>
+                    <input type="text" id="ip-input" value="localhost" placeholder="192.168.1.x">
+                </div>
+                <div class="input-group">
+                    <label>Port</label>
+                    <input type="text" id="port-input" value="9090" placeholder="9090">
+                </div>
+                <button class="btn btn-connect" id="connect-btn" onclick="toggleConnect()">Connect</button>
+                <div style="font-size:.6rem;color:var(--dim);margin-top:10px;line-height:1.9;">
+                    Run on PC:<br>
+                    <span style="color:var(--accent);">micro_ros_agent serial --dev /dev/ttyUSB0 -b 115200</span><br>
+                    <span style="color:var(--accent);">ros2 launch rosbridge_server
+                        rosbridge_websocket_launch.xml</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Odometry <span class="topic-badge">/odom</span></div>
+                <div class="data-grid">
+                    <div class="data-block">
+                        <div class="data-label">X (m)</div>
+                        <div class="data-value" id="odom-x">0.000</div>
+                    </div>
+                    <div class="data-block">
+                        <div class="data-label">Y (m)</div>
+                        <div class="data-value" id="odom-y">0.000</div>
+                    </div>
+                    <div class="data-block">
+                        <div class="data-label">YAW (°)</div>
+                        <div class="data-value" id="odom-yaw">0.0</div>
+                    </div>
+                    <div class="data-block">
+                        <div class="data-label">VEL (m/s)</div>
+                        <div class="data-value" id="odom-vx">0.000</div>
+                    </div>
+                </div>
+                <button class="btn btn-reset" onclick="resetPoseDisplay()">↺ Reset Display</button>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Encoders <span class="topic-badge">/rover/encoder_ticks</span></div>
+                <div class="data-grid">
+                    <div class="data-block">
+                        <div class="data-label">MOTOR A</div>
+                        <div class="data-value small" id="enc-a">—</div>
+                    </div>
+                    <div class="data-block">
+                        <div class="data-label">MOTOR B</div>
+                        <div class="data-value small" id="enc-b">—</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- CENTER: D-Pad + speed -->
+        <div class="panel" style="display:flex;align-items:center;justify-content:center;">
+            <div class="controller-wrap">
+
+                <div class="dpad">
+                    <button class="dpad-btn" data-dir="F">▲</button>
+                    <button class="dpad-btn" data-dir="L">◀</button>
+                    <button class="dpad-btn" data-dir="S">STOP</button>
+                    <button class="dpad-btn" data-dir="R">▶</button>
+                    <button class="dpad-btn" data-dir="B">▼</button>
+                </div>
+
+                <div style="font-size:.6rem;color:var(--dim);letter-spacing:.1em;text-align:center;margin:-8px 0 4px;">
+                    publishes → <span style="color:var(--accent);">/cmd_vel</span>
+                </div>
+
+                <div class="speed-wrap">
+
+                    <!-- Linear speed -->
+                    <div class="speed-header">
+                        <span class="speed-title">Linear Speed</span>
+                        <span class="speed-unit">m/s</span>
+                    </div>
+                    <div class="custom-input-row">
+                        <input type="range" id="lin-slider" min="0.01" max="2.00" step="0.01" value="0.20"
+                            oninput="syncFromSlider('lin')">
+                        <input type="number" id="lin-input" class="speed-num-input" min="0.01" max="2.00" step="0.01"
+                            value="0.20" oninput="syncFromInput('lin')" onblur="clampInput('lin')">
+                    </div>
+
+                    <!-- Angular speed -->
+                    <div class="speed-header" style="margin-top:10px;">
+                        <span class="speed-title">Angular Speed</span>
+                        <span class="speed-unit">rad/s</span>
+                    </div>
+                    <div class="custom-input-row">
+                        <input type="range" id="ang-slider" min="0.01" max="3.14" step="0.01" value="0.50"
+                            oninput="syncFromSlider('ang')">
+                        <input type="number" id="ang-input" class="speed-num-input" min="0.01" max="3.14" step="0.01"
+                            value="0.50" oninput="syncFromInput('ang')" onblur="clampInput('ang')">
+                    </div>
+
+                    <!-- Presets row -->
+                    <div class="presets" style="margin-top:12px;">
+                        <button class="preset-btn" onclick="setPreset(0.05,0.15,this)">CRAWL</button>
+                        <button class="preset-btn active" onclick="setPreset(0.20,0.50,this)">MED</button>
+                        <button class="preset-btn" onclick="setPreset(0.50,1.00,this)">FAST</button>
+                        <button class="preset-btn" onclick="setPreset(1.00,1.57,this)">MAX</button>
+                        <button class="preset-btn" id="custom-preset-btn" onclick="saveCustomPreset(this)"
+                            title="Save current values as custom preset">★</button>
+                    </div>
+                    <div id="custom-preset-row" style="display:none;margin-top:6px;">
+                        <button class="preset-btn" id="custom-preset-apply" style="width:100%;font-size:.65rem;"
+                            onclick="applyCustomPreset(this)">CUSTOM —</button>
+                    </div>
+
+                </div>
+
+                <div style="font-size:.65rem;color:var(--dim);letter-spacing:.1em;text-align:center;">
+                    KEYBOARD: W A S D · SPACE = STOP
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <div class="panel">
+                <div class="panel-title">Battery <span class="topic-badge">/battery_state</span></div>
+                <div class="data-block">
+                    <div class="data-label">VOLTAGE</div>
+                    <div class="data-value" id="voltage-display">—<span class="data-unit"> V</span></div>
+                    <div style="font-size:.65rem;margin-top:6px;">
+                        <span id="battery-status" style="color:var(--dim)">Waiting...</span>
+                    </div>
+                </div>
+                <div style="margin-top:8px;">
+                    <div style="font-size:.6rem;color:var(--dim);margin-bottom:4px;letter-spacing:.1em;">CHARGE LEVEL
+                    </div>
+                    <div
+                        style="background:var(--bg);border:1px solid var(--border);border-radius:2px;height:12px;overflow:hidden;">
+                        <div id="batt-bar"
+                            style="height:100%;width:0%;background:var(--green);transition:width .5s,background .5s;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Motor PWM <span class="topic-badge">/rover/motor_pwm</span></div>
+                <div class="data-grid">
+                    <div class="data-block">
+                        <div class="data-label">PWM A</div>
+                        <div class="data-value small" id="pwm-a">—</div>
+                    </div>
+                    <div class="data-block">
+                        <div class="data-label">PWM B</div>
+                        <div class="data-value small" id="pwm-b">—</div>
+                    </div>
+                </div>
+                <div style="margin-top:4px;">
+                    <div style="font-size:.6rem;color:var(--dim);margin-bottom:4px;">A</div>
+                    <div
+                        style="background:var(--bg);border:1px solid var(--border);border-radius:2px;height:8px;overflow:hidden;">
+                        <div id="pwm-bar-a" style="height:100%;width:0%;background:var(--accent);transition:width .1s;">
+                        </div>
+                    </div>
+                    <div style="font-size:.6rem;color:var(--dim);margin:6px 0 4px;">B</div>
+                    <div
+                        style="background:var(--bg);border:1px solid var(--border);border-radius:2px;height:8px;overflow:hidden;">
+                        <div id="pwm-bar-b"
+                            style="height:100%;width:0%;background:var(--accent2);transition:width .1s;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+                <div class="panel-title">ROS Log</div>
+                <div class="log-box" id="log-box" style="flex:1;height:auto;"></div>
+                <button class="btn btn-reset" style="margin-top:10px;" onclick="clearLog()">Clear Log</button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // Load roslibjs dynamically
+        const roslibScript = document.createElement('script');
+        roslibScript.src = 'https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js';
+        roslibScript.onload = () => log('roslibjs loaded ✓', 'rx');
+        roslibScript.onerror = () => log('roslibjs failed to load — check internet connection', 'err');
+        document.head.appendChild(roslibScript);
+
+        let ros = null;
+        let connected = false;
+        let cmdvelTopic = null;
+        let currentDir = null;
+        let linSpeed = 0.20;
+        let angSpeed = 0.50;
+
+        // ── Connection ─────────────────────────────────────────────────
+        function toggleConnect() { connected ? disconnect() : connect(); }
+
+        function connect() {
+            if (typeof ROSLIB === 'undefined') { log('roslibjs not ready yet, please wait...', 'err'); return; }
+            const host = document.getElementById('ip-input').value.trim();
+            const port = document.getElementById('port-input').value.trim();
+            const url = `ws://${host}:${port}`;
+            log(`Connecting → ${url}`, 'tx');
+            ros = new ROSLIB.Ros({ url });
+
+            ros.on('connection', () => {
+                connected = true;
+                document.getElementById('dot').classList.add('connected');
+                const el = document.getElementById('ws-status');
+                el.textContent = 'CONNECTED'; el.classList.add('connected');
+                document.getElementById('ws-ip').textContent = url;
+                document.getElementById('connect-btn').textContent = 'Disconnect';
+                document.getElementById('connect-btn').classList.add('active');
+                log('rosbridge connected ✓', 'rx');
+                setupTopics();
+            });
+
+            ros.on('error', e => log('ROS error: ' + e, 'err'));
+            ros.on('close', () => {
+                connected = false;
+                document.getElementById('dot').classList.remove('connected');
+                const el = document.getElementById('ws-status');
+                el.textContent = 'DISCONNECTED'; el.classList.remove('connected');
+                document.getElementById('ws-ip').textContent = '—';
+                document.getElementById('connect-btn').textContent = 'Connect';
+                document.getElementById('connect-btn').classList.remove('active');
+                log('Disconnected', 'err');
+            });
+        }
+
+        function disconnect() { if (ros) ros.close(); }
+
+        // ── ROS Topics ─────────────────────────────────────────────────
+        function setupTopics() {
+            // Publisher: /cmd_vel
+            cmdvelTopic = new ROSLIB.Topic({
+                ros, name: '/cmd_vel',
+                messageType: 'geometry_msgs/Twist'
+            });
+            log('Publisher /cmd_vel ready', 'tx');
+
+            // Subscriber: /odom
+            new ROSLIB.Topic({
+                ros, name: '/odom',
+                messageType: 'nav_msgs/Odometry',
+                throttle_rate: 100
+            }).subscribe(msg => {
+                const p = msg.pose.pose.position;
+                const q = msg.pose.pose.orientation;
+                const yaw = Math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z)) * 180 / Math.PI;
+                document.getElementById('odom-x').textContent = p.x.toFixed(3);
+                document.getElementById('odom-y').textContent = p.y.toFixed(3);
+                document.getElementById('odom-yaw').textContent = yaw.toFixed(1);
+                document.getElementById('odom-vx').textContent = msg.twist.twist.linear.x.toFixed(3);
+            });
+            log('Subscriber /odom ready', 'rx');
+
+            // Subscriber: /battery_state
+            new ROSLIB.Topic({
+                ros, name: '/battery_state',
+                messageType: 'sensor_msgs/BatteryState',
+                throttle_rate: 1000
+            }).subscribe(msg => {
+                const v = msg.voltage, pct = msg.percentage * 100;
+                document.getElementById('voltage-display').innerHTML =
+                    v.toFixed(2) + '<span class="data-unit"> V</span>';
+                updateBatteryUI(v, pct);
+            });
+            log('Subscriber /battery_state ready', 'rx');
+
+            // Subscriber: /rover/encoder_ticks
+            new ROSLIB.Topic({
+                ros, name: '/rover/encoder_ticks',
+                messageType: 'std_msgs/Int32MultiArray',
+                throttle_rate: 200
+            }).subscribe(msg => {
+                document.getElementById('enc-a').textContent = msg.data[0] ?? '—';
+                document.getElementById('enc-b').textContent = msg.data[1] ?? '—';
+            });
+            log('Subscriber /rover/encoder_ticks ready', 'rx');
+
+            // Subscriber: /rover/motor_pwm
+            new ROSLIB.Topic({
+                ros, name: '/rover/motor_pwm',
+                messageType: 'std_msgs/Int32MultiArray',
+                throttle_rate: 100
+            }).subscribe(msg => {
+                const a = msg.data[0] ?? 0, b = msg.data[1] ?? 0;
+                document.getElementById('pwm-a').textContent = a;
+                document.getElementById('pwm-b').textContent = b;
+                document.getElementById('pwm-bar-a').style.width = (Math.abs(a) / 255 * 100).toFixed(1) + '%';
+                document.getElementById('pwm-bar-b').style.width = (Math.abs(b) / 255 * 100).toFixed(1) + '%';
+            });
+            log('Subscriber /rover/motor_pwm ready', 'rx');
+        }
+
+        // ── cmd_vel publisher ──────────────────────────────────────────
+        function publishCmdVel(vx, wz) {
+            if (!connected || !cmdvelTopic) return;
+            cmdvelTopic.publish(new ROSLIB.Message({
+                linear: { x: vx, y: 0, z: 0 },
+                angular: { x: 0, y: 0, z: wz }
+            }));
+        }
+
+        // Direction → [linear.x, angular.z]
+        const dirVel = {
+            F: () => [+linSpeed, 0],
+            B: () => [-linSpeed, 0],
+            L: () => [0, +angSpeed],
+            R: () => [0, -angSpeed],
+            S: () => [0, 0],
+        };
+
+        function sendDir(dir) {
+            const [vx, wz] = dirVel[dir]();
+            publishCmdVel(vx, wz);
+        }
+
+        // ── Battery UI ─────────────────────────────────────────────────
+        function updateBatteryUI(v, pct) {
+            const bar = document.getElementById('batt-bar');
+            const st = document.getElementById('battery-status');
+            const vEl = document.getElementById('voltage-display');
+            bar.style.width = pct.toFixed(1) + '%';
+            if (v >= 11.5) {
+                bar.style.background = 'var(--green)';
+                st.textContent = `✓ Good  (${pct.toFixed(0)}%)`;
+                st.style.color = 'var(--green)'; vEl.style.color = 'var(--accent)';
+            } else if (v >= 10.5) {
+                bar.style.background = 'var(--accent2)';
+                st.textContent = `⚠ Low  (${pct.toFixed(0)}%)`;
+                st.style.color = 'var(--accent2)'; vEl.style.color = 'var(--accent2)';
+            } else {
+                bar.style.background = 'var(--danger)';
+                st.textContent = '✗ Critical — Charge now!';
+                st.style.color = 'var(--danger)'; vEl.style.color = 'var(--danger)';
+            }
+        }
+
+        // ── Speed controls ─────────────────────────────────────────────
+        // Keep slider + number input in sync. Both update linSpeed / angSpeed.
+        function syncFromSlider(axis) {
+            const val = parseFloat(document.getElementById(axis + '-slider').value);
+            document.getElementById(axis + '-input').value = val.toFixed(2);
+            if (axis === 'lin') linSpeed = val; else angSpeed = val;
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        }
+
+        function syncFromInput(axis) {
+            const el = document.getElementById(axis + '-input');
+            const max = axis === 'lin' ? 2.00 : 3.14;
+            let val = parseFloat(el.value);
+            if (isNaN(val)) return;
+            val = Math.max(0.01, Math.min(max, val));
+            document.getElementById(axis + '-slider').value = val;
+            if (axis === 'lin') linSpeed = val; else angSpeed = val;
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        }
+
+        function clampInput(axis) {
+            // On blur, snap to 2 decimal places and enforce min
+            const el = document.getElementById(axis + '-input');
+            const max = axis === 'lin' ? 2.00 : 3.14;
+            let val = parseFloat(el.value);
+            if (isNaN(val) || val < 0.01) val = 0.01;
+            if (val > max) val = max;
+            el.value = val.toFixed(2);
+            document.getElementById(axis + '-slider').value = val;
+            if (axis === 'lin') linSpeed = val; else angSpeed = val;
+        }
+
+        function setPreset(l, a, btn) {
+            linSpeed = l; angSpeed = a;
+            document.getElementById('lin-slider').value = l;
+            document.getElementById('ang-slider').value = a;
+            document.getElementById('lin-input').value = l.toFixed(2);
+            document.getElementById('ang-input').value = a.toFixed(2);
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        let customLin = null, customAng = null;
+
+        function saveCustomPreset(btn) {
+            customLin = linSpeed; customAng = angSpeed;
+            const row = document.getElementById('custom-preset-row');
+            const applyBtn = document.getElementById('custom-preset-apply');
+            applyBtn.textContent = `CUSTOM — ${customLin.toFixed(2)} m/s · ${customAng.toFixed(2)} r/s`;
+            row.style.display = 'block';
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            btn.style.color = 'var(--accent2)'; btn.style.borderColor = 'var(--accent2)';
+            log(`Custom preset saved: lin=${customLin.toFixed(2)} ang=${customAng.toFixed(2)}`, 'tx');
+        }
+
+        function applyCustomPreset(btn) {
+            if (customLin === null) return;
+            setPreset(customLin, customAng, btn);
+        }
+
+        function resetPoseDisplay() {
+            ['odom-x', 'odom-y', 'odom-yaw', 'odom-vx'].forEach(id =>
+                document.getElementById(id).textContent = '0.000');
+            log('Pose display cleared (firmware pose unchanged)', 'tx');
+        }
+
+        // ── D-Pad ──────────────────────────────────────────────────────
+        document.querySelectorAll('.dpad-btn').forEach(btn => {
+            const dir = btn.dataset.dir;
+            btn.addEventListener('pointerdown', e => {
+                e.preventDefault();
+                btn.classList.add('pressed');
+                sendDir(dir); currentDir = dir;
+            });
+            const release = () => {
+                btn.classList.remove('pressed');
+                if (dir !== 'S' && currentDir === dir) { sendDir('S'); currentDir = null; }
+            };
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+        });
+
+        // ── Keyboard ───────────────────────────────────────────────────
+        const keyMap = {
+            w: 'F', ArrowUp: 'F', a: 'L', ArrowLeft: 'L',
+            s: 'B', ArrowDown: 'B', d: 'R', ArrowRight: 'R', ' ': 'S'
+        };
+        const held = new Set();
+        document.addEventListener('keydown', e => {
+            const dir = keyMap[e.key];
+            if (!dir || held.has(e.key)) return;
+            held.add(e.key); e.preventDefault();
+            document.querySelector(`.dpad-btn[data-dir="${dir}"]`)?.classList.add('pressed');
+            sendDir(dir);
+        });
+        document.addEventListener('keyup', e => {
+            const dir = keyMap[e.key];
+            if (!dir) return;
+            held.delete(e.key);
+            document.querySelector(`.dpad-btn[data-dir="${dir}"]`)?.classList.remove('pressed');
+            if (dir !== 'S') sendDir('S');
+        });
+
+        // ── Log ────────────────────────────────────────────────────────
+        function log(msg, cls = '') {
+            const box = document.getElementById('log-box');
+            const t = new Date().toLocaleTimeString('en', { hour12: false });
+            const el = document.createElement('div');
+            el.className = `log-entry ${cls}`;
+            el.textContent = `[${t}] ${msg}`;
+            box.appendChild(el);
+            box.scrollTop = box.scrollHeight;
+            while (box.children.length > 150) box.removeChild(box.firstChild);
+        }
+        function clearLog() { document.getElementById('log-box').innerHTML = ''; }
+
+        log('Ready. Connect to rosbridge_server on your ROS PC.', '');
+    </script>
+</body>
+
+</html>
