@@ -1,0 +1,8 @@
+{
+    "url": "https://cad.onshape.com/documents/89d56f62cbec5e4e914a96f1/w/b118536c27c0a895e8b92c2e/e/b15c13f495d40a52ea5ff85e",
+    "output_format": "urdf",
+    "package_name": "rover_description",
+    "assets_directory": "meshes",
+    "output_filename": "rover",
+    "assemblyName": "v1"
+}

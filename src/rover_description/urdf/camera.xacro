@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ════════════════════════════════════════
+       camera_link
+       Physical mount frame — X forward, Z up
+       (standard REP-103 convention).
+  ════════════════════════════════════════ -->
+  <link name="camera_link">
+    <inertial>
+      <origin xyz="0 0 -0.0001" rpy="0 0 0"/>
+      <mass value="9.11538e-06"/>
+      <inertia ixx="1e-09" ixy="0"  ixz="0"
+               iyy="1e-09" iyz="0"  izz="1e-09"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.233035 -0.00325 0.163274" rpy="-3.14159 -1.44547 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/camera_link.stl"/>
+      </geometry>
+      <material name="camera_color">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.233035 -0.00325 0.163274" rpy="-3.14159 -1.44547 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/camera_link.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="camera_link"/>
+    <origin xyz="-0.129802 -0.0032302 0.25161" rpy="-1.69612 0 -1.5708"/>
+  </joint>
+
+  <!-- ════════════════════════════════════════
+       camera_optical_frame
+       Empty frame using ROS camera convention:
+         Z forward, X right, Y down.
+       image_transport, cv_bridge, and most
+       depth/RGB drivers publish in this frame.
+       The -pi/2 rotations convert REP-103 → optical.
+  ════════════════════════════════════════ -->
+  <link name="camera_optical_frame"/>
+
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child  link="camera_optical_frame"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+
+</robot>

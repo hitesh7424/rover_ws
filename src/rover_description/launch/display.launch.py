@@ -2,78 +2,95 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, Command
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
+from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+from launch_ros.substitutions import FindPackageShare
+
 
 def generate_launch_description():
-    # Define package name
-    package_name = 'rover_description'
-    
-    # Get package share directory
-    pkg_share = get_package_share_directory(package_name)
-    
-    # Path to the Xacro file
-    xacro_file = os.path.join(pkg_share, 'urdf', 'rover.urdf.xacro')
-    
-    # Path to the RViz config
-    default_rviz_config_path = os.path.join(pkg_share, 'rviz', 'urdf.rviz')
-    
-    # Launch configurations
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    rviz_config_file = LaunchConfiguration('rviz_config')
-    use_rviz = LaunchConfiguration('use_rviz')
-    
-    # Declare launch arguments
-    declare_use_sim_time = DeclareLaunchArgument(
-        'use_sim_time',
-        default_value='false',
-        description='Use simulation (Gazebo) clock if true'
+
+    pkg_share = FindPackageShare("rover_description")
+
+    # ── Launch arguments ────────────────────────────────────────────
+    use_gui_arg = DeclareLaunchArgument(
+        name="use_gui",
+        default_value="false",
+        choices=["true", "false"],
+        description="Use joint_state_publisher_gui instead of joint_state_publisher",
     )
-    
-    declare_rviz_config = DeclareLaunchArgument(
-        'rviz_config',
-        default_value=default_rviz_config_path,
-        description='Absolute path to RViz config file'
+
+    use_rviz_arg = DeclareLaunchArgument(
+        name="use_rviz",
+        default_value="false",
+        choices=["true", "false"],
+        description="Launch RViz2",
     )
-    
-    declare_use_rviz = DeclareLaunchArgument(
-        'use_rviz',
-        default_value='false',
-        description='Whether to start RViz'
+
+    rviz_config_arg = DeclareLaunchArgument(
+        name="rviz_config",
+        default_value=PathJoinSubstitution([pkg_share, "rviz", "display.rviz"]),
+        description="Path to RViz2 config file",
     )
-    
-    # Robot State Publisher Node
+
+    # ── Robot description (xacro → URDF string) ─────────────────────
+    urdf_file = PathJoinSubstitution([pkg_share, "urdf", "rover.urdf.xacro"])
+
+    robot_description = {
+        "robot_description": ParameterValue(
+            Command(["xacro ", urdf_file]),
+            value_type=str,
+        )
+    }
+
+    # ── Nodes ────────────────────────────────────────────────────────
+
+    # Publishes the URDF to /robot_description
     robot_state_publisher_node = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        name='robot_state_publisher',
-        output='screen',
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            'robot_description': Command(['xacro ', xacro_file])
-        }]
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name="robot_state_publisher",
+        output="screen",
+        parameters=[robot_description],
     )
-    
-    # RViz Node
+
+    # Publishes joint states — GUI version (slider panel)
+    joint_state_publisher_gui_node = Node(
+        package="joint_state_publisher_gui",
+        executable="joint_state_publisher_gui",
+        name="joint_state_publisher_gui",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_gui")),
+    )
+
+    # Publishes joint states — headless version (all joints at zero)
+    joint_state_publisher_node = Node(
+        package="joint_state_publisher",
+        executable="joint_state_publisher",
+        name="joint_state_publisher",
+        output="screen",
+        condition=UnlessCondition(LaunchConfiguration("use_gui")),
+    )
+
+    # RViz2
     rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        output='screen',
-        arguments=['-d', rviz_config_file],
-        parameters=[{'use_sim_time': use_sim_time}],
-        condition=IfCondition(use_rviz)
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="screen",
+        arguments=["-d", LaunchConfiguration("rviz_config")],
+        condition=IfCondition(LaunchConfiguration("use_rviz")),
     )
-    
-    # Define LaunchDescription
-    ld = LaunchDescription()
-    
-    # Add actions
-    ld.add_action(declare_use_sim_time)
-    ld.add_action(declare_rviz_config)
-    ld.add_action(declare_use_rviz)
-    ld.add_action(robot_state_publisher_node)
-    ld.add_action(rviz_node)
-    
-    return ld
+
+    return LaunchDescription(
+        [
+            use_gui_arg,
+            use_rviz_arg,
+            rviz_config_arg,
+            robot_state_publisher_node,
+            joint_state_publisher_gui_node,
+            joint_state_publisher_node,
+            rviz_node,
+        ]
+    )

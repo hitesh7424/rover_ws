@@ -1,0 +1,153 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ════════════════════════════════════════
+       Material definitions
+  ════════════════════════════════════════ -->
+  <material name="chassis_color">
+    <color rgba="0.737255 0.937255 0.917647 1"/>
+  </material>
+  <material name="frame_color">
+    <color rgba="0.917647 0.917647 0.917647 1"/>
+  </material>
+  <material name="wheel_color">
+    <color rgba="1.0 0.756863 0.054902 1"/>
+  </material>
+
+  <!-- ════════════════════════════════════════
+       base_footprint  (empty frame — REP-120)
+       Nav2 uses this as the 2D ground anchor.
+       No geometry, no inertia — intentional.
+  ════════════════════════════════════════ -->
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_to_base" type="fixed">
+    <parent link="base_footprint"/>
+    <child  link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ════════════════════════════════════════
+       base_link  (chassis body)
+  ════════════════════════════════════════ -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0.00110852 -4.60413e-05 0.0665281" rpy="0 0 0"/>
+      <mass value="6.02365"/>
+      <inertia ixx="0.0258641" ixy="-7.02344e-05" ixz="0.00181846"
+               iyy="0.0540089" iyz="5.06161e-05"  izz="0.0696575"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.00301282 1.98005e-05 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/base_link.stl"/>
+      </geometry>
+      <material name="chassis_color"/>
+    </visual>
+    <collision>
+      <origin xyz="0.00301282 1.98005e-05 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/base_link.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ════════════════════════════════════════
+       frame  (top structural frame)
+       Renamed from the auto-generated "frame"
+       to make its role explicit.
+  ════════════════════════════════════════ -->
+  <link name="frame_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1e-09"/>
+      <inertia ixx="1e-09" ixy="0" ixz="0"
+               iyy="1e-09" iyz="0" izz="1e-09"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0.096" rpy="3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/frame.stl"/>
+      </geometry>
+      <material name="frame_color"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.096" rpy="3.14159 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/frame.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="frame_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="frame_link"/>
+    <origin xyz="0 0 0.096" rpy="3.14159 0 0"/>
+  </joint>
+
+  <!-- ════════════════════════════════════════
+       Wheel macro
+       params:
+         prefix     — "left" or "right"
+         x y z      — joint origin from base_link
+         rpy        — joint rotation
+         vis_origin — visual/collision origin offset
+                      (accounts for mesh origin)
+         vis_rpy    — visual/collision rotation
+  ════════════════════════════════════════ -->
+  <xacro:macro name="wheel_macro"
+               params="prefix
+                       jx jy jz jrpy
+                       vx vy vz vrpy">
+
+    <link name="${prefix}_wheel_link">
+      <inertial>
+        <!-- Inertia shared — both wheels are identical -->
+        <xacro:if value="${prefix == 'left'}">
+          <origin xyz="-0 0 0.0040025" rpy="0 0 0"/>
+        </xacro:if>
+        <xacro:unless value="${prefix == 'left'}">
+          <origin xyz="-0 -0 -0.0040025" rpy="0 0 0"/>
+        </xacro:unless>
+        <mass value="0.0659595"/>
+        <inertia ixx="2.10606e-05" ixy="0"  ixz="0"
+                 iyy="2.10606e-05" iyz="0"  izz="3.68034e-05"/>
+      </inertial>
+      <visual>
+        <origin xyz="${vx} ${vy} ${vz}" rpy="${vrpy}"/>
+        <geometry>
+          <mesh filename="package://rover_description/meshes/wheel.stl"/>
+        </geometry>
+        <material name="wheel_color"/>
+      </visual>
+      <collision>
+        <origin xyz="${vx} ${vy} ${vz}" rpy="${vrpy}"/>
+        <geometry>
+          <mesh filename="package://rover_description/meshes/wheel.stl"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${prefix}_wheel_joint" type="continuous">
+      <parent link="base_link"/>
+      <child  link="${prefix}_wheel_link"/>
+      <origin xyz="${jx} ${jy} ${jz}" rpy="${jrpy}"/>
+      <axis xyz="0 0 1"/>
+      <limit effort="10" velocity="10"/>
+    </joint>
+
+  </xacro:macro>
+
+  <!-- Left wheel (was wheel_2) -->
+  <xacro:wheel_macro
+    prefix="left"
+    jx="0.00751282" jy="0.0990198"  jz="0.032" jrpy="-1.5708 0 0"
+    vx="-0.0045"    vy="0.032"      vz="-0.099" vrpy="1.5708 0 0"/>
+
+  <!-- Right wheel (was wheel) -->
+  <xacro:wheel_macro
+    prefix="right"
+    jx="0.00751282" jy="-0.0989802" jz="0.032" jrpy="-1.5708 0 0"
+    vx="-0.0045"    vy="-0.032"     vz="0.099"  vrpy="-1.5708 0 0"/>
+
+</robot>
